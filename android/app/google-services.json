@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "926041244920",
+    "firebase_url": "https://tsunami-4167a-default-rtdb.firebaseio.com",
+    "project_id": "tsunami-4167a",
+    "storage_bucket": "tsunami-4167a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:926041244920:android:ba970330e1b57dcbb5a70d",
+        "android_client_info": {
+          "package_name": "com.tsunami.tsunami_money"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "926041244920-q2h6v6bfdsoa73h1eke3dmrcqmi0e1bf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tsunami.tsunami_money",
+            "certificate_hash": "1043e2f740b16881fe0980d07ee69a8e5a6cc0dc"
+          }
+        },
+        {
+          "client_id": "926041244920-2mk7e5u0km894lh4tq0g81radgmd35pt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBakAk_zeiODxNoI3wDxqp0xLCjjPx4t1U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "926041244920-2mk7e5u0km894lh4tq0g81radgmd35pt.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "926041244920-nd2nis527e266mpge34a7jjdta0qib8s.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.tsunami.tsunamiMoney"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
