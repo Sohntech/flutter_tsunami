@@ -1,0 +1,6 @@
+android {
+    namespace "com.tsunami.qr_code_scanner"
+    defaultConfig {
+        minSdkVersion 23
+    }
+}

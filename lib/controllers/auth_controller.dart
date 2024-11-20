@@ -3,8 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart'; // Import pour gérer PlatformException
-
+import '../models/user_model.dart'; // Import du modèle
 import '../routes.dart';
 
 class AuthController extends GetxController {
@@ -22,10 +21,12 @@ class AuthController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxString errorMessage = ''.obs;
 
+  // Code de vérification pour l'authentification par téléphone
+  String _verificationId = '';
+
   @override
   void onInit() {
     super.onInit();
-    // Liaison de l'état utilisateur Firebase
     _firebaseUser.bindStream(_auth.authStateChanges());
     ever(_firebaseUser, _setInitialScreen);
   }
@@ -33,10 +34,8 @@ class AuthController extends GetxController {
   /// **Déterminer l'écran initial en fonction de l'utilisateur et du rôle**
   void _setInitialScreen(User? user) {
     if (user == null) {
-      // Si l'utilisateur n'est pas connecté, redirige vers la page de connexion
       Get.offAllNamed(Routes.LOGIN);
     } else {
-      // Vérifiez le rôle de l'utilisateur dans Firestore
       checkUserRole(user.uid);
     }
   }
@@ -45,9 +44,7 @@ class AuthController extends GetxController {
   Future<void> checkUserRole(String uid) async {
     try {
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      isDistributor.value = userDoc.data()?['role'] == 'distributor';
-
-      // Rediriger vers la page appropriée
+      isDistributor.value = userDoc.data()?['userType'] == 'distributor';
       Get.offAllNamed(
         isDistributor.value ? Routes.DISTRIBUTOR_HOME : Routes.CLIENT_HOME
       );
@@ -61,11 +58,11 @@ class AuthController extends GetxController {
   Future<User?> signInWithGoogle() async {
     try {
       isLoading.value = true;
-      errorMessage.value = ''; 
+      errorMessage.value = '';
 
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        errorMessage.value = 'Connexion Google annulée';
+        errorMessage.value = '';
         return null;
       }
 
@@ -75,12 +72,35 @@ class AuthController extends GetxController {
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = 
-          await _auth.signInWithCredential(credential);
-      return userCredential.user;
-    } on PlatformException catch (e) {
-      errorMessage.value = 'Erreur de connexion Google (PlatformException): ${e.message}';
-      return null;
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final User? firebaseUser = userCredential.user;
+
+      if (firebaseUser != null) {
+        final userRef = FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid);
+        final userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          // Si l'utilisateur n'existe pas, créer un nouveau document
+          await userRef.set({
+            'uid': firebaseUser.uid,
+            'email': firebaseUser.email ?? '',
+            'phone': '',
+            'userType': 'client',
+            'authProvider': 'google',
+            'balance': 0.0,
+          });
+          // Redirige vers le formulaire pour ajouter un numéro de téléphone
+          Get.offAllNamed(Routes.ADD_PHONE);
+        } else if ((userDoc.data() as Map<String, dynamic>)['phone'] == '') {
+          // Redirige vers le formulaire si le numéro de téléphone est vide
+          Get.offAllNamed(Routes.ADD_PHONE);
+        } else {
+          // Sinon, redirige vers le tableau de bord approprié
+          checkUserRole(firebaseUser.uid);
+        }
+      }
+
+      return firebaseUser;
     } catch (e) {
       errorMessage.value = 'Erreur de connexion Google: ${e.toString()}';
       return null;
@@ -97,17 +117,21 @@ class AuthController extends GetxController {
 
       final LoginResult result = await FacebookAuth.instance.login();
       if (result.status == LoginStatus.success) {
-        final AccessToken accessToken = result.accessToken!;
-        final AuthCredential credential = FacebookAuthProvider.credential(accessToken.token);
+        final OAuthCredential credential = FacebookAuthProvider.credential(result.accessToken!.token);
+
         final UserCredential userCredential = 
             await _auth.signInWithCredential(credential);
-        return userCredential.user;
+        final User? firebaseUser = userCredential.user;
+
+        if (firebaseUser != null) {
+          await _createOrUpdateUserInFirestore(firebaseUser, 'facebook');
+        }
+
+        return firebaseUser;
+      } else {
+        errorMessage.value = 'Connexion Facebook annulée ou échouée.';
+        return null;
       }
-      errorMessage.value = 'Connexion Facebook annulée';
-      return null;
-    } on PlatformException catch (e) {
-      errorMessage.value = 'Erreur de connexion Facebook (PlatformException): ${e.message}';
-      return null;
     } catch (e) {
       errorMessage.value = 'Erreur de connexion Facebook: ${e.toString()}';
       return null;
@@ -116,7 +140,7 @@ class AuthController extends GetxController {
     }
   }
 
-  /// **Connexion avec téléphone**
+  /// **Connexion avec Téléphone**
   Future<void> signInWithPhone(String phoneNumber) async {
     try {
       isLoading.value = true;
@@ -125,33 +149,78 @@ class AuthController extends GetxController {
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          try {
-            final UserCredential userCredential = 
-                await _auth.signInWithCredential(credential);
-            _firebaseUser.value = userCredential.user;
-          } on PlatformException catch (e) {
-            errorMessage.value = 'Erreur d\'authentification (PlatformException): ${e.message}';
-          } catch (e) {
-            errorMessage.value = 'Erreur d\'authentification: ${e.toString()}';
+          final UserCredential userCredential = 
+              await _auth.signInWithCredential(credential);
+          final User? firebaseUser = userCredential.user;
+
+          if (firebaseUser != null) {
+            await _createOrUpdateUserInFirestore(firebaseUser, 'phone');
           }
         },
         verificationFailed: (FirebaseAuthException e) {
-          errorMessage.value = 'Erreur de vérification: ${e.message}';
+          errorMessage.value = 'Échec de la vérification du téléphone: ${e.message}';
         },
         codeSent: (String verificationId, int? resendToken) {
-          // Redirection pour entrer le code
-          Get.toNamed('/verify-code', arguments: verificationId);
+          _verificationId = verificationId;
+          Get.snackbar('Code envoyé', 'Veuillez entrer le code reçu par SMS.');
         },
         codeAutoRetrievalTimeout: (String verificationId) {
-          errorMessage.value = 'Délai d\'attente dépassé';
+          _verificationId = verificationId;
         },
       );
-    } on PlatformException catch (e) {
-      errorMessage.value = 'Erreur (PlatformException): ${e.message}';
     } catch (e) {
-      errorMessage.value = 'Erreur: ${e.toString()}';
+      errorMessage.value = 'Erreur de connexion téléphone: ${e.toString()}';
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// **Vérification du code SMS**
+  Future<User?> verifySmsCode(String smsCode) async {
+    try {
+      isLoading.value = true;
+      final AuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId,
+        smsCode: smsCode,
+      );
+
+      final UserCredential userCredential = 
+          await _auth.signInWithCredential(credential);
+      final User? firebaseUser = userCredential.user;
+
+      if (firebaseUser != null) {
+        await _createOrUpdateUserInFirestore(firebaseUser, 'phone');
+      }
+
+      return firebaseUser;
+    } catch (e) {
+      errorMessage.value = 'Erreur lors de la vérification du code SMS: ${e.toString()}';
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// **Créer ou mettre à jour un utilisateur dans Firestore**
+  Future<void> _createOrUpdateUserInFirestore(User firebaseUser, String authProvider) async {
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid);
+      final userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        final newUser = UserModel(
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? '',
+          phone: firebaseUser.phoneNumber ?? '',
+          balance: 0.0,
+          userType: 'client',
+          authProvider: authProvider,
+        );
+
+        await userRef.set(newUser.toMap());
+      }
+    } catch (e) {
+      errorMessage.value = 'Erreur lors de la création/mise à jour de l\'utilisateur: ${e.toString()}';
     }
   }
 
@@ -166,8 +235,6 @@ class AuthController extends GetxController {
         _googleSignIn.signOut(),
       ]);
       _firebaseUser.value = null;
-    } on PlatformException catch (e) {
-      errorMessage.value = 'Erreur de déconnexion (PlatformException): ${e.message}';
     } catch (e) {
       errorMessage.value = 'Erreur de déconnexion: ${e.toString()}';
     } finally {

@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'middleware/auth_middleware.dart';
 import 'views/auth/login_view.dart';
+import 'views/auth/add_phone_view.dart'; // Import de la vue pour ajouter un numéro
 import 'views/client/home_view.dart';
 import 'views/distributor/home_view.dart';
 // import 'views/client/transfer_view.dart';
@@ -15,6 +16,7 @@ import 'views/distributor/home_view.dart';
 abstract class Routes {
   // Auth routes
   static const LOGIN = '/login';
+  static const ADD_PHONE = '/add_phone'; // Nouvelle route pour ajouter un numéro
   
   // Client routes
   static const CLIENT_HOME = '/client_home';
@@ -32,12 +34,21 @@ abstract class Routes {
 
 abstract class AppPages {
   static final pages = [
+    // Auth Routes
     GetPage(
       name: Routes.LOGIN,
       page: () => LoginView(),
       middlewares: [
         NoAuthMiddleware(), // Redirige vers la page d'accueil si déjà connecté
       ],
+    ),
+    GetPage(
+      name: Routes.ADD_PHONE,
+      page: () => AddPhoneView(),
+      middlewares: [
+        AuthMiddleware(), // S'assurer que l'utilisateur est connecté
+      ],
+      transition: Transition.fadeIn,
     ),
     
     // Client Routes

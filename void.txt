@@ -1,0 +1,73 @@
+  final GlobalKey qrKey = GlobalKey(); // Corrected type to GlobalKey//
+  
+
+const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Image.network(
+                    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/QR_code_for_mobile_English_Wikipedia.svg/800px-QR_code_for_mobile_English_Wikipedia.svg.png', // Lien de l'image QR code
+                    height: 150,  // Ajustez la taille selon vos besoins
+                    width: 150,
+                  ),
+                ),
+
+
+
+                ok maintenant je veux faire la logique des transactions concernant le client par exemple voici à quoi peut ressembler un model pour les transactions : 
+class Transaction {
+  final String id;
+  final String type;
+  final double montant;
+  final String etat;
+  final String clientId;
+  final String? numeroDestinataire; // Obligatoire pour type "envoi"
+  final String? distributeurId; // Obligatoire pour type "retrait" ou "dépôt"
+  final DateTime date;
+
+  Transaction({
+    required this.id,
+    required this.type,
+    required this.montant,
+    required this.etat,
+    required this.clientId,
+    this.numeroDestinataire,
+    this.distributeurId,
+    required this.date,
+  });
+
+  factory Transaction.fromJson(String id, Map<String, dynamic> json) {
+    return Transaction(
+      id: id,
+      type: json['type'],
+      montant: json['montant'].toDouble(),
+      etat: json['etat'],
+      clientId: json['client_id'],
+      numeroDestinataire: json['numero_destinataire'],
+      distributeurId: json['distributeur_id'],
+      date: DateTime.parse(json['date']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'montant': montant,
+      'etat': etat,
+      'client_id': clientId,
+      'numero_destinataire': numeroDestinataire,
+      'distributeur_id': distributeurId,
+      'date': date.toIso8601String(),
+    };
+  }
+
+  static Future<void> fromMap(Map<String, dynamic> data) async {}
+}
+
+Donc il faut comprendre que le type de transaction va aussi definir les attributs de cette transaction là à savoir lorsqu'une transaction est de type dépot ou retrait, il doit avoir un attribut distributeurId et au cas où c'est un transfert simple on avoir un attribut numeroDestinataire (un numero doit commencer par 77 ou  78 ou 70 ou 76 ou 75 et être composé au total de 9 chiffres) 
+Dans la base donnée firestore je dois avoir une collection transaction avec chaque transaction lié a un user de par son uid. 
+

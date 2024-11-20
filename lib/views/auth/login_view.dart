@@ -83,34 +83,23 @@ class LoginView extends StatelessWidget {
                     ),
                     SizedBox(height: 40.h),
                     // Titre de l'application avec animation
-                    SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, -0.5),
-                        end: Offset.zero,
-                      ).animate(
-                        CurvedAnimation(
-                          parent: ModalRoute.of(context)!.animation!,
-                          curve: Curves.easeOut,
-                        ),
+                    Text(
+                      'TSUNAMI MONEY',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 36.sp,
+                        fontWeight: FontWeight.bold,
+                        foreground: Paint()
+                          ..shader = LinearGradient(
+                            colors: [
+                              Colors.white,
+                              const Color(0xFF6C63FF),
+                            ],
+                          ).createShader(
+                            Rect.fromLTWH(0, 0, 200.w, 70.h),
+                          ),
+                        letterSpacing: 3,
                       ),
-                      child: Text(
-                        'TSUNAMI MONEY',
-                        style: GoogleFonts.orbitron(
-                          fontSize: 36.sp,
-                          fontWeight: FontWeight.bold,
-                          foreground: Paint()
-                            ..shader = LinearGradient(
-                              colors: [
-                                Colors.white,
-                                const Color(0xFF6C63FF),
-                              ],
-                            ).createShader(
-                              Rect.fromLTWH(0, 0, 200.w, 70.h),
-                            ),
-                          letterSpacing: 3,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 16.h),
                     Text(
@@ -128,40 +117,31 @@ class LoginView extends StatelessWidget {
                     // Affichage des messages d'erreur
                     Obx(() {
                       if (authController.errorMessage.isNotEmpty) {
-                        return TweenAnimationBuilder(
-                          duration: const Duration(milliseconds: 300),
-                          tween: Tween<double>(begin: 0, end: 1),
-                          builder: (context, double value, child) {
-                            return Transform.scale(
-                              scale: value,
-                              child: Container(
-                                margin: EdgeInsets.only(bottom: 16.h),
-                                padding: EdgeInsets.all(16.w),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.red.withOpacity(0.1),
-                                      Colors.red.withOpacity(0.05),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.red.withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Text(
-                                  authController.errorMessage.value,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.red[300],
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            );
-                          },
+                        return Container(
+                          margin: EdgeInsets.only(bottom: 16.h),
+                          padding: EdgeInsets.all(16.w),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.red.withOpacity(0.1),
+                                Colors.red.withOpacity(0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.red.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            authController.errorMessage.value,
+                            style: GoogleFonts.poppins(
+                              color: Colors.red[300],
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         );
                       }
                       return const SizedBox.shrink();
@@ -224,24 +204,9 @@ class LoginView extends StatelessWidget {
               return Container(
                 color: Colors.black54,
                 child: Center(
-                  child: Container(
-                    padding: EdgeInsets.all(20.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        const Color(0xFF6C63FF),
-                      ),
-                      strokeWidth: 3,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      const Color(0xFF6C63FF),
                     ),
                   ),
                 ),
@@ -347,21 +312,9 @@ class BackgroundPainter extends CustomPainter {
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    canvas.drawCircle(
-      Offset(size.width * 0.8, size.height * 0.2),
-      100,
-      circlePaint,
-    );
-
-    canvas.drawCircle(
-      Offset(size.width * 0.2, size.height * 0.8),
-      150,
-      circlePaint,
-    );
+    canvas.drawCircle(size.center(Offset(0, 0)), size.width * 0.3, circlePaint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
