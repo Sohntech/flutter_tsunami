@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:tsunami_money/views/client/simple_transfer_view.dart';
+import '../../services/client_service.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../routes.dart';
@@ -376,7 +377,7 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
     );
   }
 
-  Widget _buildTransactionHistory() {
+ Widget _buildTransactionHistory() {
   return Container(
     padding: const EdgeInsets.all(16),
     decoration: const BoxDecoration(
@@ -419,25 +420,68 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
               );
             }
 
-            return ListView.builder(
-              itemCount: transactions.length,
-              itemBuilder: (context, index) {
-                var transaction = transactions[index].data() as Map<String, dynamic>;
-                var isReceived = transaction['numeroDestinataire'] == userPhone;
+            return FutureBuilder<Map<String, String>>(
+              future: fetchClientPhones(transactions, _firestore),
+              builder: (context, phonesSnapshot) {
+                if (phonesSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isReceived ? Colors.green : Colors.indigo,
-                    child: Icon(
-                      isReceived ? Icons.arrow_downward : Icons.arrow_upward,
-                      color: Colors.white,
-                    ),
-                  ),
-                  title: Text(isReceived ? 'Montant reçu' : transaction['type']),
-                  subtitle: Text(
-                    '${transaction['montant']} FCFA - ${transaction['date']}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
+                if (phonesSnapshot.hasError) {
+                  return Center(
+                    child: Text('Erreur de récupération des numéros de téléphone'),
+                  );
+                }
+
+                var phonesData = phonesSnapshot.data ?? {};
+
+                return ListView.builder(
+                  itemCount: transactions.length,
+                  itemBuilder: (context, index) {
+                    var transaction = transactions[index].data() as Map<String, dynamic>;
+                    var isReceived = transaction['numeroDestinataire'] == userPhone;
+
+                    // Formater la date et l'heure
+                    DateTime dateTime = (transaction['date'] as Timestamp).toDate();
+                    String formattedDate = '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+                    String formattedTime = '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+
+                    // Récupérer le numéro de téléphone du client associé à la transaction
+                    String clientPhone = phonesData[transaction['clientId']] ?? 'Inconnu';
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: isReceived ? Colors.green : Colors.indigo,
+                        child: Icon(
+                          isReceived ? Icons.arrow_downward : Icons.arrow_upward,
+                          color: Colors.white,
+                        ),
+                      ),
+                      title: Text(
+                        isReceived ? 'Montant reçu' : transaction['type'],
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Montant : ${transaction['montant']} FCFA',
+                            style: const TextStyle(color: Colors.black),
+                          ),
+                          Text(
+                            isReceived
+                                ? 'De : $clientPhone'
+                                : 'Vers : ${transaction['numeroDestinataire']}',
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                          Text(
+                            'Date : $formattedDate à $formattedTime',
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 );
               },
             );
@@ -447,5 +491,6 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
     ),
   );
 }
+
 
 }
