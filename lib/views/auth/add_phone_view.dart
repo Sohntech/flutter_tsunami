@@ -53,30 +53,97 @@ class _AddPhoneViewState extends State<AddPhoneView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Ajouter un numéro de téléphone"),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: "Numéro de téléphone",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone),
-              ),
+      body: SingleChildScrollView( // Permet de faire défiler le contenu quand le clavier est ouvert
+        child: Container(
+          height: MediaQuery.of(context).size.height, // Utiliser toute la hauteur de l'écran
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.deepPurple[800]!, Colors.indigo[900]!],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _savePhoneNumber,
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("Enregistrer"),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Colors.transparent,
+                  child: Icon(
+                    Icons.flash_on,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const Text(
+                  "Ajouter un téléphone\n     à votre compte",
+                  style: TextStyle(
+                    color: Color.fromARGB(255, 255, 255, 255),
+                    fontSize: 22,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                TextField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Numéro de téléphone",
+                    labelStyle: const TextStyle(color: Colors.white),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.white, width: 2),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.white, width: 2),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    prefixIcon: const Icon(Icons.phone, color: Colors.white),
+                    filled: true,
+                    fillColor: Colors.deepPurple[800]!.withOpacity(0.5),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _savePhoneNumber,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Enregistrer",
+                          style: TextStyle(fontSize: 18),
+                        ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "En continuant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

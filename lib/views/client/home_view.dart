@@ -381,25 +381,58 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
     );
   }
 
-  Widget _buildTransactionHistory() {
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 10,
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: const CircleAvatar(
-              radius: 24,
-              backgroundColor: Color(0xFF4A3AFF),
-              child: Icon(Icons.money, color: Colors.white),
-            ),
-            title: Text('Transaction #${index + 1}'),
-            subtitle: Text('Montant: 10 000 FCFA'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          );
-        },
-      ),
-    );
+   Widget _buildTransactionHistory() {
+  final User? currentUser = FirebaseAuth.instance.currentUser; // Récupérer l'utilisateur actuel
+  if (currentUser == null) {
+    return const Center(child: Text('Utilisateur non connecté'));
   }
+
+  return Container(
+    margin: const EdgeInsets.only(top: 16),
+    child: StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('transactions') // Collection des transactions
+          .where('clientId', isEqualTo: currentUser.uid) // Filtrer par ID de l'utilisateur
+          .orderBy('date', descending: true) // Optionnel: trier par date décroissante
+          .snapshots(), // Suivre les mises à jour en temps réel
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator()); // Chargement en cours
+        }
+
+        if (snapshot.hasError) {
+          return const Center(child: Text('Une erreur est survenue'));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('Aucune transaction récente.'));
+        }
+
+        final transactions = snapshot.data!.docs;
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: transactions.length,
+          itemBuilder: (context, index) {
+            var transaction = transactions[index].data() as Map<String, dynamic>;
+            String type = transaction['type'] ?? 'Inconnu';
+            double montant = transaction['montant']?.toDouble() ?? 0.0;
+            String date = transaction['date']?.toDate().toString() ?? 'Date inconnue';
+
+            return ListTile(
+              leading: const CircleAvatar(
+                radius: 24,
+                backgroundColor: Color(0xFF4A3AFF),
+                child: Icon(Icons.money, color: Colors.white),
+              ),
+              title: Text('Transaction: $type'),
+              subtitle: Text('Montant: ${montant.toStringAsFixed(0)} FCFA\nDate: $date'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            );
+          },
+        );
+      },
+    ),
+  );
+}
+
 }
