@@ -25,7 +25,6 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
   late Animation<double> _fadeAnimation;
 
   User? currentUser;
-  Map<String, dynamic>? userData;
 
   bool isScanning = false;
   MobileScannerController? scannerController;
@@ -39,22 +38,7 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
     _animationController.forward();
-    _fetchUserDetails();
-  }
-
-  void _fetchUserDetails() async {
-    setState(() {
-      currentUser = _auth.currentUser;
-    });
-
-    if (currentUser != null) {
-      final DocumentSnapshot userDoc = await _firestore.collection('users').doc(currentUser!.uid).get();
-      if (userDoc.exists) {
-        setState(() {
-          userData = userDoc.data() as Map<String, dynamic>;
-        });
-      }
-    }
+    currentUser = _auth.currentUser;
   }
 
   @override
@@ -186,9 +170,7 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
       body: SafeArea(
         child: Column(
           children: [
-            // Top balance header
             _buildTopHeader(),
-            // Action buttons
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               child: Row(
@@ -222,7 +204,6 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
                 ],
               ),
             ),
-            // Transaction history
             Expanded(
               child: _buildTransactionHistory(),
             ),
@@ -253,7 +234,6 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Profile and logout
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -288,7 +268,6 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
             ],
           ),
           const SizedBox(height: 32),
-          // Balance
           const Text(
             'Solde du compte',
             style: TextStyle(
@@ -298,135 +277,169 @@ class _ClientHomeViewState extends State<ClientHomeView> with SingleTickerProvid
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isBalanceVisible = !_isBalanceVisible;
-                  });
-                },
-                child: Row(
-                  children: [
-                    Text(
-                      _isBalanceVisible
-                          ? '${userData?['balance'] ?? 0.0} FCFA'
-                          : '••••••••',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+          StreamBuilder<DocumentSnapshot>(
+            stream: _firestore.collection('users').doc(currentUser?.uid).snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.hasError) {
+                return const Text('••••••••', style: TextStyle(color: Colors.white, fontSize: 25));
+              }
+              var data = snapshot.data!.data() as Map<String, dynamic>;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isBalanceVisible = !_isBalanceVisible;
+                      });
+                    },
+                    child: Row(
+                      children: [
+                        Text(
+                          _isBalanceVisible
+                              ? '${data['balance'] ?? 0.0} FCFA'
+                              : '••••••••',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 25,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(
+                          _isBalanceVisible ? Icons.visibility : Icons.visibility_off,
+                          color: Colors.white70,
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.qr_code),
+                    label: const Text('QR Code'),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white, backgroundColor: Colors.white.withOpacity(0.2),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Icon(
-                      _isBalanceVisible ? Icons.visibility : Icons.visibility_off,
-                      color: Colors.white70,
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.qr_code),
-                label: const Text('QR'),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: const Color(0xFF4A3AFF), backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    onPressed: _openQrModal,
                   ),
-                ),
-                onPressed: _openQrModal,
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      color: color,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 32),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
-                ),
+  Widget _buildActionCard(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 36),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-   Widget _buildTransactionHistory() {
-  final User? currentUser = FirebaseAuth.instance.currentUser; // Récupérer l'utilisateur actuel
-  if (currentUser == null) {
-    return const Center(child: Text('Utilisateur non connecté'));
-  }
-
+  Widget _buildTransactionHistory() {
   return Container(
-    margin: const EdgeInsets.only(top: 16),
-    child: StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('transactions') // Collection des transactions
-          .where('clientId', isEqualTo: currentUser.uid) // Filtrer par ID de l'utilisateur
-          .orderBy('date', descending: true) // Optionnel: trier par date décroissante
-          .snapshots(), // Suivre les mises à jour en temps réel
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator()); // Chargement en cours
+    padding: const EdgeInsets.all(16),
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+    ),
+    child: StreamBuilder<DocumentSnapshot>(
+      stream: _firestore.collection('users').doc(currentUser?.uid).snapshots(),
+      builder: (context, userSnapshot) {
+        if (!userSnapshot.hasData || userSnapshot.hasError) {
+          return const Center(child: CircularProgressIndicator());
         }
 
-        if (snapshot.hasError) {
-          return const Center(child: Text('Une erreur est survenue'));
-        }
+        var userData = userSnapshot.data!.data() as Map<String, dynamic>;
+        var userPhone = userData['phone']; // Numéro de téléphone de l'utilisateur
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('Aucune transaction récente.'));
-        }
+        return StreamBuilder<QuerySnapshot>(
+          stream: _firestore
+              .collection('transactions')
+              .orderBy('date', descending: true)
+              .snapshots(),
+          builder: (context, transactionSnapshot) {
+            if (!transactionSnapshot.hasData || transactionSnapshot.hasError) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        final transactions = snapshot.data!.docs;
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: transactions.length,
-          itemBuilder: (context, index) {
-            var transaction = transactions[index].data() as Map<String, dynamic>;
-            String type = transaction['type'] ?? 'Inconnu';
-            double montant = transaction['montant']?.toDouble() ?? 0.0;
-            String date = transaction['date']?.toDate().toString() ?? 'Date inconnue';
+            var transactions = transactionSnapshot.data!.docs.where((doc) {
+              var data = doc.data() as Map<String, dynamic>;
+              // Inclure les transactions envoyées ou reçues
+              return data['clientId'] == currentUser?.uid ||
+                  data['numeroDestinataire'] == userPhone;
+            }).toList();
 
-            return ListTile(
-              leading: const CircleAvatar(
-                radius: 24,
-                backgroundColor: Color(0xFF4A3AFF),
-                child: Icon(Icons.money, color: Colors.white),
-              ),
-              title: Text('Transaction: $type'),
-              subtitle: Text('Montant: ${montant.toStringAsFixed(0)} FCFA\nDate: $date'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            if (transactions.isEmpty) {
+              return const Center(
+                child: Text(
+                  'Aucune transaction récente.',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              itemCount: transactions.length,
+              itemBuilder: (context, index) {
+                var transaction = transactions[index].data() as Map<String, dynamic>;
+                var isReceived = transaction['numeroDestinataire'] == userPhone;
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: isReceived ? Colors.green : Colors.indigo,
+                    child: Icon(
+                      isReceived ? Icons.arrow_downward : Icons.arrow_upward,
+                      color: Colors.white,
+                    ),
+                  ),
+                  title: Text(isReceived ? 'Montant reçu' : transaction['type']),
+                  subtitle: Text(
+                    '${transaction['montant']} FCFA - ${transaction['date']}',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                );
+              },
             );
           },
         );
